@@ -1,0 +1,140 @@
+<!doctype html>
+<html itemscope itemtype="http://schema.org/Product">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=Utf-8">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"
+        integrity="sha512-ZDSPMa/JM1D+7kdg2x3BsruQ6T/JpJo3jWDWkCZsP+5yVyp1KfESqLI+7RqB5k24F7p2cV7i2YHh/890y6P6Sw=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <link rel="stylesheet" href="assets/style.css" type="text/css" />
+    <title itemprop="name">QR Code Generator</title>
+    <style>
+        @media print {
+            .no-print {
+                display: none;
+            }
+
+        }
+    </style>
+</head>
+
+<body onload="body_loadHander()">
+
+
+    <div class="section no-print">
+
+        <form name="qrForm">
+            <span>TypeNumber:</span>
+            <select name="t"></select>
+            <span>ErrorCorrectionLevel:</span>
+            <select name="e">
+                <option value="L">L(7%)</option>
+                <option value="M" selected="selected">M(15%)</option>
+                <option value="Q">Q(25%)</option>
+                <option value="H">H(30%)</option>
+            </select>
+            <span>Mode:</span>
+            <select name="m">
+                <option value="Numeric">Numeric</option>
+                <option value="Alphanumeric">Alphanumeric</option>
+                <option value="Byte" selected>Byte</option>
+                <option value="Kanji">Kanji</option>
+            </select>
+            <span>Multibyte:</span>
+            <select name="mb">
+                <option value="default">None</option>
+                <option value="SJIS">SJIS</option>
+                <option value="UTF-8" selected>UTF-8</option>
+            </select>
+            <br>
+            <span>Size of the image in px: </span><input id="size" type="text" name="size" value="150" placeholder="30">
+            <span>Size of the text in px: </span><input id="textSize" type="text" name="size" value="30">
+            <br />
+            <span>margin size in px: </span><input id="marginSize" type="text" name="size" value="37">
+            <br />
+            <textarea name="msg" rows="10" cols="40"></textarea>
+            <br />
+            <input type="button" value="update" onclick="update_qrcode()" />
+
+        </form>
+
+
+    </div>
+
+    <div style="text-align: center;" id="qr"></div>
+
+</body>
+
+</html>
+<script>
+    'use strict';
+
+    var body_loadHander = function () {
+
+        var crtOpt = function (value, label) {
+            var opt = document.createElement('option');
+            opt.appendChild(document.createTextNode(label));
+            opt.value = value;
+            return opt;
+        };
+
+        var t = document.forms['qrForm'].elements['t'];
+        t.appendChild(crtOpt('' + 0, 'Auto Detect'));
+        for (var i = 1; i <= 40; i += 1) {
+            t.appendChild(crtOpt('' + i, '' + i));
+        }
+        t.value = '0';
+
+        document.getElementById('dataCaps').appendChild(createDataCapsTable());
+
+        update_qrcode();
+    };
+
+    var draw_qrcode = function (text, typeNumber, errorCorrectionLevel) {
+        document.write(create_qrcode(text, typeNumber, errorCorrectionLevel));
+    };
+
+    var create_qrcode = function (text, typeNumber,
+        errorCorrectionLevel, mode, mb) {
+
+        qrcode.stringToBytes = qrcode.stringToBytesFuncs[mb];
+
+        var qr = qrcode(typeNumber || 4, errorCorrectionLevel || 'M');
+        qr.addData(text, mode);
+        qr.make();
+
+        //  return qr.createTableTag();
+        //  return qr.createSvgTag();
+        return qr.createImgTag();
+    };
+
+    var update_qrcode = function () {
+        // 	3508 x 2480 px
+        var form = document.forms['qrForm'];
+        var size = document.querySelector("#size").value
+        var textSize = document.querySelector("#textSize").value
+        var marginSize = document.querySelector("#marginSize").value
+        var text = form.elements['msg'].value.
+            replace(/^[\s\u3000]+|[\s\u3000]+$/g, '')
+            .split(',')
+        var parser = new DOMParser();
+        var t = form.elements['t'].value;
+        var e = form.elements['e'].value;
+        var m = form.elements['m'].value;
+        var mb = form.elements['mb'].value;
+        document.getElementById('qr').innerHTML = ""
+        text.forEach((element, index) => {
+            var htmlDoc = parser.parseFromString(create_qrcode(element, t, e, m, mb), 'text/html').querySelector("img");
+            htmlDoc.style.height = size + "px"
+            htmlDoc.style.width = size + "px"
+            document.getElementById('qr').innerHTML +=
+                `<div style="margin:${marginSize}px;width:${size}px;display:inline-block">
+        <div class="img" id="img${index}"></div>
+        <p style="margin-top:-10px; text-align:center;padding:0; font-size:${textSize}px">${element}</p>
+    </div>`
+            document.querySelector("#img" + index).appendChild(htmlDoc)
+        })
+
+    };
+</script>
