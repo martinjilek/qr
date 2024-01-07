@@ -1,0 +1,8 @@
+body {
+    background:#eee;
+}
+
+#canvas {
+    height:80vh;
+    width:100%;
+}
