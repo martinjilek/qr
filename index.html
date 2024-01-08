@@ -1,225 +1,381 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bwip-js/4.2.0/bwip-js-min.js" integrity="sha512-hGe32CfGdkpO3YQLLNOZiD0+9KXqH+ijWW9ncLze3pO3cUEac1i0CEnuz8DUWCsBisft7V9j9m0rkIo6DMkzAw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha512-qZvrmS2ekKPF2mSznTQsxqPgnpkI4DNTlrdUmTzrDgektczlKNRRhy5X5AAOnx5S09ydFYWWNSfcEqDTTHgtNA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js" integrity="sha512-CeIsOAsgJnmevfCi2C7Zsyy6bQKi43utIjdA87Q0ZY84oDqnI0uwfM9+bKiIkI75lUeI00WG/+uJzOmuHlesMA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bwip-js/4.2.0/bwip-js-min.js"
+        integrity="sha512-hGe32CfGdkpO3YQLLNOZiD0+9KXqH+ijWW9ncLze3pO3cUEac1i0CEnuz8DUWCsBisft7V9j9m0rkIo6DMkzAw=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.3.2/jspdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"
+        integrity="sha512-CeIsOAsgJnmevfCi2C7Zsyy6bQKi43utIjdA87Q0ZY84oDqnI0uwfM9+bKiIkI75lUeI00WG/+uJzOmuHlesMA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+        integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
     <link rel="stylesheet" type="text/css" href="styles.css">
 
 </head>
+
 <body>
-    
+
     <div class="container">
         <div class="row gx-3">
-          <div class="col-sm-3">
-           <div class="p-3 border bg-light">
-            <div class="row py-4 border-bottom">
-                <div class="col-12">
-                    <div class="form-group">
-                        <span class="h4 d-block">Nastavení papíru</span>
-                        <label for="presetPaper">Přednastavené velikosti</label>
-                        <select class="form-control" id="presetPaper">
-                          <option value="custom">Vlastní</option>
-                          <option selected=true value="a4">a4</option>
-                          <option value="a3">a3</option>
-                          <option value="a2">a2</option>
-                        </select>
-                      </div>
-                </div>
-                <div class="col-6">
-                    <div class="form-group">
-                        <label for="height">Výška</label>
-                        <input type="number" class="form-control" id="height" value=210>
+            <div class="col-sm-3">
+                <div class="p-3 border bg-light">
+                    <div class="row">
+                        <div class="col-12">
+                            <span id="printBatch">print</span>
+                        </div>
                     </div>
-                </div>
-                <div class="col-6">
-                    <div class="form-group">
-                        <label for="width">Šířka</label>
-                        <input type="number" class="form-control" id="width" value=297>
+                    <div class="row py-4 border-bottom">
+                        <div class="col-12">
+                            <div class="form-group">
+                                <span class="h4 d-block">Nastavení papíru</span>
+                                <label for="presetPaper">Přednastavené velikosti</label>
+                                <select class="form-control" id="presetPaper">
+                                    <option value="custom">Vlastní</option>
+                                    <option selected=true value="a4">a4</option>
+                                    <option value="a3">a3</option>
+                                    <option value="a2">a2</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="form-group">
+                                <label for="height">Výška</label>
+                                <input type="number" class="form-control" id="height" value=210>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="form-group">
+                                <label for="width">Šířka</label>
+                                <input type="number" class="form-control" id="width" value=297>
+                            </div>
+                        </div>
                     </div>
+
+                    <div class="row  py-4 border-bottom">
+                        <div class="col-12">
+                            <div class="form-group">
+                                <span class="h4 d-block">Nastavení textu</span>
+                                <label for="textFont">Font textu</label>
+                                <select class="form-control" id="textFont">
+                                    <option value="Arial">Arial</option>
+                                    <option value="Times New Roman">Times New Roman</option>
+                                    <option value="Courier New">Courier New</option>
+                                    <option value="Georgia">Georgia</option>
+                                    <option value="Verdana">Verdana</option>
+                                    <option value="Trebuchet MS">Trebuchet MS</option>
+                                    <option value="Comic Sans MS">Comic Sans MS</option>
+                                    <option value="Impact">Impact</option>
+                                    <option value="Helvetica">Helvetica</option>
+                                    <option value="Lucida Grande">Lucida Grande</option>
+                                    <option value="Tahoma">Tahoma</option>
+                                    <option value="Palatino">Palatino</option>
+                                    <option value="Garamond">Garamond</option>
+                                    <option value="Bookman Old Style">Bookman Old Style</option>
+                                    <option value="Arial Black">Arial Black</option>
+                                    <option value="Brush Script MT">Brush Script MT</option>
+                                    <option value="Candara">Candara</option>
+                                    <option value="Century Gothic">Century Gothic</option>
+                                    <option value="Consolas">Consolas</option>
+                                    <option value="Calibri">Calibri</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="form-group">
+                                <label for="textKey">Klíč</label>
+                                <input type="text" class="form-control" id="textKey" value="text">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row  py-4 border-bottom">
+                        <div class="col-12">
+                            <div class="form-group">
+                                <span class="h4 d-block">Nastavení kódu</span>
+                                <label for="qrKind">Druh kódu</label>
+                                <select class="form-control" id="qrKind">
+                                    <option value="qrcode">QR Code</option>
+                                    <option value="datamatrix">Data Matrix</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="form-group">
+                                <label for="qrKey">Klíč</label>
+                                <input type="text" class="form-control" id="qrKey" value="code">
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
-            <div class="row  py-4">
-              <div class="col-12">
-                <div class="form-group">
-                    <span class="h4 d-block">Nastavení textu</span>
-                    <label for="textFont">Font textu</label>
-                    <select class="form-control" id="textFont">
-                        <option value="Arial">Arial</option>
-                        <option value="Times New Roman">Times New Roman</option>
-                        <option value="Courier New">Courier New</option>
-                        <option value="Georgia">Georgia</option>
-                        <option value="Verdana">Verdana</option>
-                        <option value="Trebuchet MS">Trebuchet MS</option>
-                        <option value="Comic Sans MS">Comic Sans MS</option>
-                        <option value="Impact">Impact</option>
-                        <option value="Helvetica">Helvetica</option>
-                        <option value="Lucida Grande">Lucida Grande</option>
-                        <option value="Tahoma">Tahoma</option>
-                        <option value="Palatino">Palatino</option>
-                        <option value="Garamond">Garamond</option>
-                        <option value="Bookman Old Style">Bookman Old Style</option>
-                        <option value="Arial Black">Arial Black</option>
-                        <option value="Brush Script MT">Brush Script MT</option>
-                        <option value="Candara">Candara</option>
-                        <option value="Century Gothic">Century Gothic</option>
-                        <option value="Consolas">Consolas</option>
-                        <option value="Calibri">Calibri</option>
-                    </select>
-                  </div>
-              </div>
+            <div class="col-sm-9">
+                <div class="p-3 border bg-light"><canvas id="canvas" width="800" height="600"></canvas></div>
             </div>
-           </div>
-          </div>
-          <div class="col-sm-9">
-            <div class="p-3 border bg-light"><canvas id="canvas" width="800" height="600"></canvas></div>
-          </div>
         </div>
-      </div>
-    
+    </div>
+
 </body>
 
 <script>
-    // canvas
-    const canvas = new fabric.Canvas('canvas',{
-                border:"black",
-                backgroundColor :"#b8b2b2"
+    const canvas = new fabric.Canvas('canvas', {
+        border: "black",
+        backgroundColor: "#b8b2b2"
+    });
+    (async () => {
+        // canvas
+
+
+        let isPanning = false;
+        let lastPosX = 0;
+        let lastPosY = 0;
+
+        const paper = new fabric.Rect({
+            fill: "yellow",
+            width: fabric.util.parseUnit('290mm'),
+            height: fabric.util.parseUnit('210mm'),
+            hasBorders: false,
+            hasControls: false,
+            evented: false,
+            selectable: false,
+            objectID: "paper"
+        });
+        canvas.add(paper)
+
+
+        canvas.on('mouse:down', function (opt) {
+            if (opt.e.altKey) {
+                var evt = opt.e;
+                isPanning = true;
+                lastPosX = evt.clientX;
+                lastPosY = evt.clientY;
+                this.setCursor('grab'); // Change cursor to hand (grab)
+                canvas.selection = false; // Disable selection while panning
+            }
+        });
+
+        canvas.on('mouse:move', function (opt) {
+            if (isPanning && opt.e) {
+                var e = opt.e;
+                var vpt = this.viewportTransform;
+                vpt[4] += e.clientX - lastPosX;
+                vpt[5] += e.clientY - lastPosY;
+                this.requestRenderAll();
+                lastPosX = e.clientX;
+                lastPosY = e.clientY;
+            }
+        });
+
+        canvas.on('mouse:up', function (opt) {
+            isPanning = false;
+            this.setCursor('default'); // Reset cursor
+            canvas.selection = true; // Re-enable selection
+        });
+
+        canvas.on('mouse:wheel', function (opt) {
+            var delta = opt.e.deltaY;
+            var zoom = canvas.getZoom();
+            zoom *= 0.999 ** delta;
+            if (zoom > 2) zoom = 2;
+            if (zoom < 0.1) zoom = 0.1;
+            canvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom);
+            opt.e.preventDefault();
+            opt.e.stopPropagation();
+        });
+
+        canvas.on("object:moving", function (obj) {
+            const movingBox = obj.target;
+
+            // Update the dimensions of the movingBox in case it has been resized
+            var top = movingBox.top;
+            var left = movingBox.left;
+            var bottom = top + movingBox.getScaledHeight(); // Use getScaledHeight() to get current height
+            var right = left + movingBox.getScaledWidth(); // Use getScaledWidth() to get current width
+
+            var topBound = paper.top;
+            var bottomBound = topBound + paper.height;
+            var leftBound = paper.left;
+            var rightBound = leftBound + paper.width;
+
+            // Adjust the position of movingBox to keep it within bounds
+            movingBox.left = Math.min(Math.max(left, leftBound), rightBound - movingBox.getScaledWidth());
+            movingBox.top = Math.min(Math.max(top, topBound), bottomBound - movingBox.getScaledHeight());
+        });
+
+
+
+        // paper
+
+        document.querySelector("#presetPaper").addEventListener("change", (e) => { setPaperDimensions(e) })
+        document.querySelector("#width").addEventListener("input", (e) => { setPaperDimensions(e) })
+        document.querySelector("#height").addEventListener("input", (e) => { setPaperDimensions(e) })
+
+        const presetPaperDimensions = {
+            'a4': { width: 210, height: 297 },
+            'a3': { width: 297, height: 420 },
+            'a2': { width: 420, height: 594 }
+        }
+        function setPaperDimensions(e) {
+            const dimElem = document.querySelector("#presetPaper")
+            const heightElem = document.querySelector("#width")
+            const widthElem = document.querySelector("#height")
+            console.log(widthElem, heightElem)
+            switch (e.target) {
+                case dimElem:
+                    if (e.target.value != "custom") {
+                        const paper = presetPaperDimensions[e.target.value]
+                        widthElem.value = paper.width
+                        heightElem.value = paper.height
+                    }
+                    break;
+                case heightElem:
+                case widthElem:
+                    dimElem.value = "custom"
+                default:
+                    break;
+            }
+
+            paper.set("width", fabric.util.parseUnit(widthElem.value + "mm"))
+            paper.set("height", fabric.util.parseUnit(heightElem.value + "mm"))
+
+            canvas.renderAll()
+        }
+
+        /* --- TEXT --- */
+
+        let text = new fabric.Text("Miele technika s.r.o", {
+            fontFamily: "Arial",
+            csvKey: "text",
+            objectID: "text"
+        })
+        canvas.add(text)
+
+        // font
+        document.querySelector("#textFont").addEventListener("change", (e) => { setTextFont(e.target.value) })
+        function setTextFont(textFont) {
+            text.fontFamily = textFont;
+            canvas.renderAll()
+        }
+        // csv klíč
+        document.querySelector("#textKey").addEventListener("change", (e) => {
+            text.csvKey = e.target.value || "text"
+        })
+
+
+        /* --- CODE ---*/
+
+        async function generateCode(type, text) {
+            const img = document.createElement("img");
+
+            const bwipCanvas = document.createElement("canvas")
+            img.src = await bwipjs.toCanvas(bwipCanvas, {
+                bcid: type,
+                text: text,
+                scale: 3,
+                height: 10,
+                includetext: false
+            })
+            const base64Img = bwipCanvas.toDataURL('image/png');
+
+            return base64Img
+        }
+
+        let img = await generateCode("qrcode", "Miele Technika s.r.o")
+
+        async function loadImageAndAddToCanvas(img) {
+            return new Promise((resolve, reject) => {
+                fabric.Image.fromURL(img, function (qr) {
+                    qr.set({
+                        left: 100,
+                        top: 100
+                    });
+                    qr.csvKey = "code";
+                    qr.objectID = "text"
+                    canvas.add(qr);
+                    resolve(qr);
+                });
+            });
+        }
+
+        const codeObject = await loadImageAndAddToCanvas(img)
+
+
+        document.querySelector("#qrKind").addEventListener("change", async(e) => {
+            img = await generateCode(e.target.value, "teeeest");
+            console.log(codeObject)
+            codeObject.setSrc(img, function (qr) {
+                canvas.renderAll();
+                codeObject = qr;
+            });
+            canvas.renderAll();
+        })
+
+        document.querySelector("#qrKey").addEventListener("change", (e) => {
+            codeObject.csvKey = e.target.value || "code";
+        })
+
+
+        /* --- CSV --- */
+        const parsedCsvData = [{ "code": "test123", "text": "test123" }, { "code": "test133", "text": "test133" }, { "code": "test133", "text": "test133" }, { "code": "test133", "text": "test133" }];
+
+        async function batchFromCsv() {
+            const pdf = new jsPDF({
+                orientation: 'landscape',
+                unit: 'px',
+                format: [paper.width, paper.height]
             });
 
-    let isPanning = false;
-    let lastPosX = 0;
-    let lastPosY = 0;
-
-    const paper = new fabric.Rect({
-                fill: "white",
-                width: fabric.util.parseUnit('290mm'),
-                height: fabric.util.parseUnit('210mm'),
-                hasBorders: false,
-                hasControls: false,
-                evented: false,
-                selectable: false,
-                objectID: "paper"
-                });
-    canvas.add(paper)
-
-        
-    canvas.on('mouse:down', function(opt) {
-        if (opt.e.altKey) {
-            var evt = opt.e;
-            isPanning = true;
-            lastPosX = evt.clientX;
-            lastPosY = evt.clientY;
-            this.setCursor('grab'); // Change cursor to hand (grab)
-            canvas.selection = false; // Disable selection while panning
-        }
-    });
-
-    canvas.on('mouse:move', function(opt) {
-        if (isPanning && opt.e) {
-            var e = opt.e;
-            var vpt = this.viewportTransform;
-            vpt[4] += e.clientX - lastPosX;
-            vpt[5] += e.clientY - lastPosY;
-            this.requestRenderAll();
-            lastPosX = e.clientX;
-            lastPosY = e.clientY;
-        }
-    });
-
-    canvas.on('mouse:up', function(opt) {
-        isPanning = false;
-        this.setCursor('default'); // Reset cursor
-        canvas.selection = true; // Re-enable selection
-    });
-
-    canvas.on('mouse:wheel', function(opt) {
-        var delta = opt.e.deltaY;
-        var zoom = canvas.getZoom();
-        zoom *= 0.999 ** delta;
-        if (zoom > 2) zoom = 2;
-        if (zoom < 0.1) zoom = 0.1;
-        canvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom);
-        opt.e.preventDefault();
-        opt.e.stopPropagation();
-    });
-
-    canvas.on("object:moving", function(obj) {
-        const movingBox = obj.target;
-
-        // Update the dimensions of the movingBox in case it has been resized
-        var top = movingBox.top;
-        var left = movingBox.left;
-        var bottom = top + movingBox.getScaledHeight(); // Use getScaledHeight() to get current height
-        var right = left + movingBox.getScaledWidth(); // Use getScaledWidth() to get current width
-
-        var topBound = paper.top;
-        var bottomBound = topBound + paper.height;
-        var leftBound = paper.left;
-        var rightBound = leftBound + paper.width;
-        
-        // Adjust the position of movingBox to keep it within bounds
-        movingBox.left = Math.min(Math.max(left, leftBound), rightBound - movingBox.getScaledWidth());
-        movingBox.top = Math.min(Math.max(top, topBound), bottomBound - movingBox.getScaledHeight());
-    });
-
-
-
-    // paper
-
-    document.querySelector("#presetPaper").addEventListener("change",(e)=>{setPaperDimensions(e)})
-    document.querySelector("#width").addEventListener("input",(e)=>{setPaperDimensions(e)})
-    document.querySelector("#height").addEventListener("input",(e)=>{setPaperDimensions(e)})
-
-    const presetPaperDimensions = {
-        'a4':{width:210, height: 297},
-        'a3':{width:297, height: 420},
-        'a2':{width:420, height: 594}
-    }
-    function setPaperDimensions(e){
-        const dimElem =  document.querySelector("#presetPaper")
-        const heightElem =  document.querySelector("#width")
-        const widthElem =  document.querySelector("#height")
-        console.log(widthElem,heightElem)
-        switch (e.target) {
-            case dimElem:
-                if(e.target.value != "custom"){
-                    const paper = presetPaperDimensions[e.target.value]
-                    widthElem.value = paper.width
-                    heightElem.value = paper.height
+            for (let i = 0; i < parsedCsvData.length; i++) {
+                if (i > 0) {
+                    pdf.addPage();
                 }
-                break;
-            case heightElem:
-            case widthElem: 
-                dimElem.value="custom"
-            default:
-                break;
+
+                const el = parsedCsvData[i];
+
+                if (el[text.csvKey]) {
+                    text.text = el[text.csvKey];
+                }
+
+                if (el[codeObject.csvKey]) {
+                    const codeText = el[codeObject.csvKey];
+                    const codeType = document.querySelector("#qrKind").value;
+                    const img = await generateCode(codeType, codeText);
+                    console.log(img);
+                    await new Promise((resolve) => {
+                        codeObject.setSrc(img, function (qr) {
+                            resolve();
+                        });
+                    });
+                }
+
+                await new Promise((resolve) => {
+                    canvas.clone(function (clonedCanvas) {
+                        const group = new fabric.Group([...clonedCanvas.getObjects()]);
+                        console.log(group);
+                        const groupDataUrl = group.toDataURL({
+                            format: 'jpeg',
+                            quality: 0.8,
+                        });
+                        console.log(groupDataUrl);
+                        pdf.addImage(groupDataUrl, 'PNG', 0, 0, paper.width, paper.height);
+                        resolve();
+                    });
+                });
+            }
+
+            pdf.save("qr.pdf");
         }
 
-        paper.set("width",fabric.util.parseUnit(widthElem.value+"mm"))
-        paper.set("height",fabric.util.parseUnit(heightElem.value+"mm"))
+        document.querySelector("#printBatch").addEventListener("click", () => {
+            batchFromCsv()
+        })
 
-        canvas.renderAll()
-    }
-    
-    // text
-
-    
-    let text = new fabric.Text("Miele technika s.r.o", {
-        fontFamily :"Arial"
-    })
-    canvas.add(text)
-
-    // font
-    document.querySelector("#textFont").addEventListener("change",(e)=>{setTextFont(e.target.value)})
-    function setTextFont(textFont){
-        text.fontFamily = textFont;
-        canvas.renderAll()
-    }
-
-
+    })();
 </script>
+
 </html>
