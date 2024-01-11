@@ -25,3 +25,16 @@ body {
 .btn-primary:hover,.btn-primary:active,.btn-primary:focus {
     background:#888282;
 }
+
+.alert {
+    position:absolute;
+    bottom: 2rem;
+    width:90%;
+    left:50%;
+    transform: translate(-50%, 0)
+}
+
+.alert .btn-close{
+    position:absolute;
+    right:1%;
+}

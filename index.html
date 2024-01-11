@@ -28,12 +28,17 @@
                 <div class="p-3 border bg-light">
                     <div class="row">
                         <div class="col-12 flex-row d-flex">
-                            <button id="printBatch" class="btn btn-primary square-button">
+                            <button id="printBatch" class="btn btn-primary square-button" data-bs-toggle="tooltip" title="Vygenerovat pdf">
                                 <span class="material-symbols-outlined">
                                     print
                                 </span>
                             </button>
-                            <button id="exportSettings" class="btn btn-primary square-button" data-bs-toggle="modal" data-bs-target="#myModal">
+                            <button id="importCsv" data-bs-toggle="tooltip" title="Nahrát zdrojové csv" class="btn btn-primary square-button">
+                                <span class="material-symbols-outlined">
+                                    upload_2
+                                </span>
+                            </button>
+                            <button id="exportSettings" class="btn btn-primary square-button"  data-bs-toggle="modal" data-bs-target="#settingsModal">
                                 <span class="material-symbols-outlined">
                                     settings
                                 </span>
@@ -131,7 +136,7 @@
         </div>
     </div>
 
-    <div class="modal fade" id="myModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
             <div class="modal-header">
@@ -149,22 +154,28 @@
             </div>
         </div>
     </div>
+    <input type="file" id="input-csv-upload" style="display:none" accept=".csv">
 </body>
 
 <script>
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
+    const settingsModal = new bootstrap.Modal(document.querySelector("#settingsModal")); 
     const canvas = new fabric.Canvas('canvas', {
         border: "black",
         backgroundColor: "#b8b2b2"
     });
+    let paper,codeObject,text, parsedCsvData
     (async () => {
         // canvas
-
 
         let isPanning = false;
         let lastPosX = 0;
         let lastPosY = 0;
 
-        const paper = new fabric.Rect({
+        paper = new fabric.Rect({
             fill: "white",
             width: fabric.util.parseUnit('290mm'),
             height: fabric.util.parseUnit('210mm'),
@@ -217,14 +228,68 @@
             opt.e.stopPropagation();
         });
 
+        function getRotatedPoint(x, y, cx, cy, angle) {
+            var radians = (Math.PI / 180) * angle,
+                cos = Math.cos(radians),
+                sin = Math.sin(radians),
+                nx = (cos * (x - cx)) - (sin * (y - cy)) + cx,
+                ny = (sin * (x - cx)) + (cos * (y - cy)) + cy;
+            return { x: nx, y: ny };
+        }
+
+        function getRotatedBoundingBox(obj) {
+            var angle = obj.angle,
+                width = obj.getScaledWidth(),
+                height = obj.getScaledHeight(),
+                cx = obj.left, // Center X
+                cy = obj.top;  // Center Y
+
+            var halfWidth = width / 2,
+                halfHeight = height / 2;
+
+            var vertices = [
+                getRotatedPoint(cx - halfWidth, cy - halfHeight, cx, cy, angle),
+                getRotatedPoint(cx + halfWidth, cy - halfHeight, cx, cy, angle),
+                getRotatedPoint(cx - halfWidth, cy + halfHeight, cx, cy, angle),
+                getRotatedPoint(cx + halfWidth, cy + halfHeight, cx, cy, angle)
+            ];
+
+            return {
+                left: Math.min(...vertices.map(v => v.x)),
+                top: Math.min(...vertices.map(v => v.y)),
+                right: Math.max(...vertices.map(v => v.x)),
+                bottom: Math.max(...vertices.map(v => v.y))
+            };
+        }
+
+        canvas.on("selection:created",function(event){
+            var activeSelection = canvas.getActiveObject();
+
+            if(activeSelection && activeSelection.type === 'activeSelection') {
+                var originalCenter = activeSelection.getCenterPoint();
+
+                // Set the origin to center
+                activeSelection.set({
+                    originX: 'center',
+                    originY: 'center'
+                });
+
+                // Reset the left and top positions based on the original center
+                activeSelection.set({
+                    left: originalCenter.x,
+                    top: originalCenter.y
+                });
+
+                // Render the changes on the canvas
+                canvas.requestRenderAll();
+            }
+        })
+        
         canvas.on("object:moving", function (obj) {
             const movingBox = obj.target;
 
-            // Update the dimensions of the movingBox in case it has been resized
-            var top = movingBox.top;
-            var left = movingBox.left;
-            var bottom = top + movingBox.getScaledHeight(); // Use getScaledHeight() to get current height
-            var right = left + movingBox.getScaledWidth(); // Use getScaledWidth() to get current width
+            // Get the bounding box considering rotation
+            var rotatedBox = getRotatedBoundingBox(movingBox);
 
             var topBound = paper.top;
             var bottomBound = topBound + paper.height;
@@ -232,8 +297,18 @@
             var rightBound = leftBound + paper.width;
 
             // Adjust the position of movingBox to keep it within bounds
-            movingBox.left = Math.min(Math.max(left, leftBound), rightBound - movingBox.getScaledWidth());
-            movingBox.top = Math.min(Math.max(top, topBound), bottomBound - movingBox.getScaledHeight());
+            if (rotatedBox.left < leftBound) {
+                movingBox.left += leftBound - rotatedBox.left;
+            }
+            if (rotatedBox.top < topBound) {
+                movingBox.top += topBound - rotatedBox.top;
+            }
+            if (rotatedBox.right > rightBound) {
+                movingBox.left -= rotatedBox.right - rightBound;
+            }
+            if (rotatedBox.bottom > bottomBound) {
+                movingBox.top -= rotatedBox.bottom - bottomBound;
+            }
         });
 
 
@@ -251,9 +326,8 @@
         }
         function setPaperDimensions(e) {
             const dimElem = document.querySelector("#presetPaper")
-            const heightElem = document.querySelector("#width")
-            const widthElem = document.querySelector("#height")
-            console.log(widthElem, heightElem)
+            const heightElem = document.querySelector("#height")
+            const widthElem = document.querySelector("#width")
             switch (e.target) {
                 case dimElem:
                     if (e.target.value != "custom") {
@@ -268,7 +342,7 @@
                 default:
                     break;
             }
-
+            
             paper.set("width", fabric.util.parseUnit(widthElem.value + "mm"))
             paper.set("height", fabric.util.parseUnit(heightElem.value + "mm"))
 
@@ -277,10 +351,14 @@
 
         /* --- TEXT --- */
 
-        let text = new fabric.Text("Miele technika s.r.o", {
+        text = new fabric.Text("Miele technika s.r.o", {
             fontFamily: "Arial",
             csvKey: "text",
-            objectID: "text"
+            objectID: "text",
+            originX: 'center',
+            originY: 'center',
+            left: paper.width / 2,
+            top: paper.height / 2
         })
         canvas.add(text)
 
@@ -309,7 +387,6 @@
                 includetext: false
             })
             const base64Img = bwipCanvas.toDataURL('image/png');
-console.log(base64Img);
             return base64Img
         }
 
@@ -319,8 +396,10 @@ console.log(base64Img);
             return new Promise((resolve, reject) => {
                 fabric.Image.fromURL(img, function (qr) {
                     qr.set({
-                        left: 100,
-                        top: 100
+                        originX: 'center',
+                        originY: 'center',
+                        left: paper.width / 2,
+                        top: paper.height / 2 - (qr.height / 2) - text.height
                     });
                     qr.csvKey = "code";
                     qr.objectID = "text"
@@ -330,7 +409,7 @@ console.log(base64Img);
             });
         }
 
-        let codeObject = await loadImageAndAddToCanvas(img)
+        codeObject = await loadImageAndAddToCanvas(img)
 
 
         document.querySelector("#qrKind").addEventListener("change", async(e) => {
@@ -349,9 +428,10 @@ console.log(base64Img);
 
 
         /* --- CSV --- */
-        const parsedCsvData = [{ "code": "test123", "text": "test123" }, { "code": "test133", "text": "test133" }, { "code": "test133", "text": "test133" }, { "code": "test133", "text": "test133" }];
-
         async function batchFromCsv() {
+            if(!parsedCsvData){
+                return alert("Nebyl nahrán csv soubor!")
+            }
             const pdf = new jsPDF({
                 orientation: 'landscape',
                 unit: 'px',
@@ -367,6 +447,8 @@ console.log(base64Img);
 
                 if (el[text.csvKey]) {
                     text.text = el[text.csvKey];
+                }else{
+                    return alert(`Sloupec ${text.csvKey} se nenachází v přiloženém csv!`)
                 }
 
                 if (el[codeObject.csvKey]) {
@@ -379,6 +461,8 @@ console.log(base64Img);
                             resolve();
                         });
                     });
+                }else{
+                    return alert(`Sloupec ${codeObject.csvKey} se nenachází v přiloženém csv!`)
                 }
 
                 await new Promise((resolve) => {
@@ -399,13 +483,44 @@ console.log(base64Img);
             pdf.save("qr.pdf");
         }
 
+        function parseCsv(csv){
+            const lines = csv.trim().split("\n");
+            const headers = lines[0].split(";");
+            
+            const jsonData = [];
+            for (let i = 1; i < lines.length; i++) {
+                const row = lines[i].split(";");
+                const obj = {};
+                for (let j = 0; j < headers.length; j++) {
+                    obj[headers[j].replace(/\r/g, "").trim()] = row[j].replace(/\r/g, "").trim();
+                }
+                jsonData.push(obj);
+            }
+            return jsonData;
+        }
         document.querySelector("#printBatch").addEventListener("click", () => {
             batchFromCsv()
         })
 
+        document.querySelector("#importCsv").addEventListener("click",()=>{
+            document.querySelector("#input-csv-upload").click();
+        })
+
+        document.querySelector("#input-csv-upload").addEventListener("change",(e)=>{
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const content = e.target.result;
+                    parsedCsvData = parseCsv(content);
+                };
+                reader.readAsText(file);
+            }
+        })
+
         /* --- SETTINGS --- */
         function exportSettings(){
-            const data = JSON.stringify(canvas.toJSON(['hasBorders', 'hasControls', 'evented', 'selectable']));
+            const data = JSON.stringify(canvas.toJSON(['hasBorders', 'hasControls', 'evented', 'selectable', 'objectID', 'originX', 'originY']));
 
             var blob = new Blob([data], { type: 'application/json' });
             var downloadUrl = URL.createObjectURL(blob);
@@ -419,7 +534,17 @@ console.log(base64Img);
         }
 
         function importCanvasSettings(settings){
-            //todo
+            if (!settings || !settings.objects || !Array.isArray(settings.objects)) {
+                return bs.alert("error","Při nahrávání nastavení došlo k chybě")
+            }
+
+            canvas.loadFromJSON(settings,()=>{
+                paper = canvas.getObjects().find(o=>o.objectID === 'paper')
+                codeObject = canvas.getObjects().find(o=>o.objectID === 'code')
+                text = canvas.getObjects().find(o=>o.objectID === 'text')
+            })
+            
+            
         }
 
         document.querySelector("#settings-export").addEventListener("click", ()=>{
@@ -436,9 +561,14 @@ console.log(base64Img);
                 var reader = new FileReader();
                 reader.readAsText(file, "UTF-8");
                 reader.onload = function(evt) {
+                    settingsModal.hide()
                     var fileContent = evt.target.result;
-                    var settings = JSON.parse(fileContent);
-                    
+                    try {
+                        var settings = JSON.parse(fileContent);
+                    } catch (error) {
+                        return bs.alert("error","Import nastavení selhal")    
+                    }
+
                     importCanvasSettings(settings);
                 }
                 reader.onerror = function(evt) {
@@ -447,6 +577,43 @@ console.log(base64Img);
             }
         })
     })();
+
+    const bs = {
+            alert: (type,content,options = {})=>{
+                let t
+                switch (type) {
+                    case "success": 
+                        t = "alert-success"
+                        break;
+                    case "warning": 
+                        t = "alert-warning"
+                        break;
+                    case "error": 
+                        t = "alert-danger"
+                        break;
+                
+                    default:
+                        throw new Error("Wrong error type")
+                        break;
+                }
+
+                const div = document.createElement("div")
+                div.classList.add(t,"alert","fade","show")
+                div.setAttribute("role","alert")
+                div.innerHTML = `
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                <div class="alert-content">
+                    ${content}
+                </div>
+                `
+                const bsAlert = new bootstrap.Alert(div)
+
+                document.querySelector("body").appendChild(div)
+                setTimeout(()=>{
+                    bsAlert._element? bsAlert.close() : false
+                },options.dismissTime * 1000 || 5000)
+            }
+        }
 </script>
 
 </html>
