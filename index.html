@@ -43,6 +43,16 @@
                                     settings
                                 </span>
                             </button>
+                            <button id="info" class="btn btn-primary square-button"  data-bs-toggle="modal" data-bs-target="#infoModal">
+                                <span class="material-symbols-outlined">
+                                    help
+                                </span>
+                            </button>
+                            <button id="csvTable" class="btn btn-primary square-button"  data-bs-toggle="modal" data-bs-target="#csvModal">
+                                <span class="material-symbols-outlined">
+                                    table_view
+                                </span>
+                            </button>
                         </div>
                     </div>
                     <div class="row py-4 border-bottom">
@@ -154,6 +164,34 @@
             </div>
         </div>
     </div>
+
+    <div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Návod</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                
+            </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="csvModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Zdrojová data</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="csvTableWrapper">
+                
+            </div>
+            </div>
+        </div>
+    </div>
     <input type="file" id="input-csv-upload" style="display:none" accept=".csv">
 </body>
 
@@ -168,6 +206,7 @@
         backgroundColor: "#b8b2b2"
     });
     let paper,codeObject,text, parsedCsvData
+    let guidelineLines = [];
     (async () => {
         // canvas
 
@@ -215,6 +254,11 @@
             isPanning = false;
             this.setCursor('default'); // Reset cursor
             canvas.selection = true; // Re-enable selection
+        });
+
+        canvas.on('object:modified', function() {
+            removeGuidelines(canvas, guidelineLines);
+            guidelineLines = [];
         });
 
         canvas.on('mouse:wheel', function (opt) {
@@ -287,7 +331,10 @@
         
         canvas.on("object:moving", function (obj) {
             const movingBox = obj.target;
-
+            if(guidelineLines.length === 0){
+                guidelineLines = addGuidelines(canvas)
+            }
+            
             // Get the bounding box considering rotation
             var rotatedBox = getRotatedBoundingBox(movingBox);
 
@@ -295,6 +342,10 @@
             var bottomBound = topBound + paper.height;
             var leftBound = paper.left;
             var rightBound = leftBound + paper.width;
+
+            // Define the snapping intervals (5% of paper width and height)
+            var snapIntervalX = paper.width * 0.01;
+            var snapIntervalY = paper.height * 0.01;
 
             // Adjust the position of movingBox to keep it within bounds
             if (rotatedBox.left < leftBound) {
@@ -309,6 +360,15 @@
             if (rotatedBox.bottom > bottomBound) {
                 movingBox.top -= rotatedBox.bottom - bottomBound;
             }
+
+            // Snap to the nearest horizontal interval
+            movingBox.left = Math.round(movingBox.left / snapIntervalX) * snapIntervalX;
+
+            // Snap to the nearest vertical interval
+            movingBox.top = Math.round(movingBox.top / snapIntervalY) * snapIntervalY;
+
+            // Update the object's position
+            movingBox.setCoords();
         });
 
 
@@ -402,7 +462,9 @@
                         top: paper.height / 2 - (qr.height / 2) - text.height
                     });
                     qr.csvKey = "code";
-                    qr.objectID = "text"
+                    qr.objectID = "code",
+                    qr.codeType = document.querySelector("#qrKind").value
+                    console.log("here", qr)
                     canvas.add(qr);
                     resolve(qr);
                 });
@@ -413,12 +475,13 @@
 
 
         document.querySelector("#qrKind").addEventListener("change", async(e) => {
-            img = await generateCode(e.target.value, "teeeest");
+            img = await generateCode(e.target.value, "Miele Technika s.r.o");
             console.log(codeObject)
             codeObject.setSrc(img, function (qr) {
                 canvas.renderAll();
                 codeObject = qr;
             });
+            codeObject.codeType = e.target.value
             canvas.renderAll();
         })
 
@@ -508,19 +571,25 @@
 
         document.querySelector("#input-csv-upload").addEventListener("change",(e)=>{
             const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const content = e.target.result;
-                    parsedCsvData = parseCsv(content);
-                };
-                reader.readAsText(file);
+            try{
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const content = e.target.result;
+                        parsedCsvData = parseCsv(content);
+                    };
+                    reader.readAsText(file);
+                    bs.alert("success","Načtení csv proběhlo úspěšně")
+                }
+            }catch($e){
+                bs.alert("error","Při načítání csv došlo k chybě");
             }
+            
         })
 
         /* --- SETTINGS --- */
         function exportSettings(){
-            const data = JSON.stringify(canvas.toJSON(['hasBorders', 'hasControls', 'evented', 'selectable', 'objectID', 'originX', 'originY']));
+            const data = JSON.stringify(canvas.toJSON(['hasBorders', 'hasControls', 'evented', 'selectable', 'objectID', 'originX', 'originY','codeType','csvKey']));
 
             var blob = new Blob([data], { type: 'application/json' });
             var downloadUrl = URL.createObjectURL(blob);
@@ -541,9 +610,10 @@
             canvas.loadFromJSON(settings,()=>{
                 paper = canvas.getObjects().find(o=>o.objectID === 'paper')
                 codeObject = canvas.getObjects().find(o=>o.objectID === 'code')
+                console.log(codeObject)
                 text = canvas.getObjects().find(o=>o.objectID === 'text')
+                refreshInputs()
             })
-            
             
         }
 
@@ -613,6 +683,109 @@
                     bsAlert._element? bsAlert.close() : false
                 },options.dismissTime * 1000 || 5000)
             }
+        }
+
+        function refreshInputs(){
+            document.querySelector("#height").value = Math.round(pxToMm(paper.height))
+            document.querySelector("#width").value = Math.round(pxToMm(paper.width))
+
+            document.querySelector("#textFont").value = text.fontFamily
+            document.querySelector("#textKey").value = text.csvKey
+
+            document.querySelector("#qrKind").value = codeObject.codeType
+            document.querySelector("#qrKey").value = codeObject.csvKey
+
+        }
+
+        function pxToMm(pixels, ppi = 96) {
+            const inches = pixels / ppi;
+            const millimeters = inches * 25.4;
+            return millimeters;
+        }
+
+        function addGuidelines(canvas) {
+            var width = paper.width;
+            var height = paper.height;
+
+            var positionsX = [width * 0.25, width * 0.5, width * 0.75];
+            var positionsY = [height * 0.25, height * 0.5, height * 0.75];
+
+            var lines = [];
+
+            // Create horizontal lines
+            positionsY.forEach(function(posY) {
+                var line = new fabric.Line([0, posY, width, posY], {
+                    stroke: '#ededed',
+                    selectable: false,
+                    evented: false
+                });
+                lines.push(line);
+                canvas.add(line);
+            });
+
+            // Create vertical lines
+            positionsX.forEach(function(posX) {
+                var line = new fabric.Line([posX, 0, posX, height], {
+                    stroke: '#ededed',
+                    selectable: false,
+                    evented: false
+                });
+                lines.push(line);
+                canvas.add(line);
+            });
+
+            canvas.renderAll();
+            return lines;
+        }
+
+        function removeGuidelines(canvas, lines) {
+            lines.forEach(function(line) {
+                canvas.remove(line);
+            });
+            canvas.renderAll();
+        }
+
+        visualizeCsvData()
+        function visualizeCsvData(){
+            let parsedCsvData = JSON.parse('[{"text":"Test123","code":"Test123"},{"text":"Ahoj","code":"Ahoj"},{"text":"BlaBlaBla","code":"Bla Bla Bla"}]')
+            const tWrapper = document.querySelector("#csvTableWrapper");
+            if(!parsedCsvData){
+                return tWrapper.innerHTML=`
+                    <h6>Žádná data!</h6>
+                `
+            }
+            
+            const table = document.createElement("table")
+    
+            let uniqueKeys = new Set();
+
+            parsedCsvData.forEach(obj => {
+                console.log(obj)
+                Object.keys(obj).forEach(key => {
+                    uniqueKeys.add(key);
+                });
+            });
+
+            let columns = Array.from(uniqueKeys);
+            // table heading
+            let tRow = document.createElement("tr")
+            columns.forEach(e=>{
+                console.log(e);
+                let th = document.createElement("th")
+                th.innerHTML = e;
+                tRow.appendChild(th)
+            })
+            table.appendChild(tRow);
+
+            tWrapper.innerHTML = "";
+            parsedCsvData.forEach(row=>{
+                const trow = document.createElement("row");
+// TODO
+            })
+            tWrapper.appendChild(table);
+
+
+            
         }
 </script>
 
