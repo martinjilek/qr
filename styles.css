@@ -2,6 +2,13 @@ body {
     background:#eee;
 }
 
+.sticky-header thead {
+    position: sticky;
+    top: 0;
+    background-color: white;
+    z-index: 1020; /* Ensure it's above other elements */
+}
+
 #canvas {
     height:80vh;
     width:100%;
@@ -37,4 +44,12 @@ body {
 .alert .btn-close{
     position:absolute;
     right:1%;
+}
+.loader-wrapper{
+    top:0;
+    left:0;
+    position:absolute;
+    height:100svh;
+    width:100svw;
+    background: rgba(255, 255, 255, .6);
 }

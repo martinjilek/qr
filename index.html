@@ -24,8 +24,8 @@
 
     <div class="container">
         <div class="row gx-3">
-            <div class="col-sm-3">
-                <div class="p-3 border bg-light">
+            <div class="col-sm-3 bg-light border">
+                <div class="p-3 border">
                     <div class="row">
                         <div class="col-12 flex-row d-flex">
                             <button id="printBatch" class="btn btn-primary square-button" data-bs-toggle="tooltip" title="Vygenerovat pdf">
@@ -111,15 +111,15 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="col-6">
+                        <div class="col-12">
                             <div class="form-group">
-                                <label for="textKey">Klíč</label>
+                                <label for="textKey">Název sloupce (csv)</label>
                                 <input type="text" class="form-control" id="textKey" value="text">
                             </div>
                         </div>
                     </div>
 
-                    <div class="row  py-4 border-bottom">
+                    <div class="row  py-4">
                         <div class="col-12">
                             <div class="form-group">
                                 <span class="h4 d-block">Nastavení kódu</span>
@@ -130,9 +130,9 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="col-6">
+                        <div class="col-12">
                             <div class="form-group">
-                                <label for="qrKey">Klíč</label>
+                                <label for="qrKey">Název sloupce (csv)</label>
                                 <input type="text" class="form-control" id="qrKey" value="code">
                             </div>
                         </div>
@@ -141,8 +141,19 @@
                 </div>
             </div>
             <div class="col-sm-9">
-                <div class="p-3 border bg-light"><canvas id="canvas" width="800" height="600"></canvas></div>
+                <div class="p-3 border bg-light h-100">
+                    <div class="canvas-wrapper">
+                        <canvas id="canvas"></canvas>
+                    </div>    
+                </div>
             </div>
+        </div>
+
+        <div class="loader-wrapper d-none justify-content-center align-items-center flex-column" id="loader">
+            <div class="spinner-border" role="status">
+                <span class="sr-only"></span>
+            </div>
+            <span class="message"></span>
         </div>
     </div>
 
@@ -169,10 +180,15 @@
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="exampleModalLabel">Návod</h5>
+                <h4 class="modal-title" id="exampleModalLabel">Návod</h4>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+                <h5>1. import zdrojových dat</h6>
+                <p>
+                    K importu dat slouží...
+
+                </p>
                 
             </div>
             </div>
@@ -186,7 +202,7 @@
                 <h5 class="modal-title" id="exampleModalLabel">Zdrojová data</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body" id="csvTableWrapper">
+            <div class="modal-body pt-0" id="csvTableWrapper" style="overflow:auto; max-height:80vh">
                 
             </div>
             </div>
@@ -200,7 +216,10 @@
     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl)
     })
-    const settingsModal = new bootstrap.Modal(document.querySelector("#settingsModal")); 
+    const settingsModal = new bootstrap.Modal(document.querySelector("#settingsModal"));
+    const canvasElem = document.querySelector("#canvas")
+    canvasElem.width = document.querySelector(".canvas-wrapper").clientWidth
+    canvasElem.height = document.querySelector(".canvas-wrapper").clientHeight
     const canvas = new fabric.Canvas('canvas', {
         border: "black",
         backgroundColor: "#b8b2b2"
@@ -430,22 +449,28 @@
         }
         // csv klíč
         document.querySelector("#textKey").addEventListener("change", (e) => {
-            text.csvKey = e.target.value || "text"
+            text.csvKey = e.target.value.trim() || "text"
         })
 
 
         /* --- CODE ---*/
 
         async function generateCode(type, text) {
-            const img = document.createElement("img");
-
+            //const img = document.createElement("img");
             const bwipCanvas = document.createElement("canvas")
-            img.src = await bwipjs.toCanvas(bwipCanvas, {
-                bcid: type,
-                text: text,
-                scale: 3,
-                includetext: false
-            })
+            let options = {}
+            options.bcid = type;
+            options.text = text;
+            options.scale = 3;
+            options.includetext = false;
+
+            // pokud chybí data pro generování kódu, barcode vygeneruji červený, value = 0
+            if(!text){
+                options.barcolor = "FF0000";
+                options.text = "0";
+            }
+
+            await bwipjs.toCanvas(bwipCanvas, options)
             const base64Img = bwipCanvas.toDataURL('image/png');
             return base64Img
         }
@@ -464,7 +489,6 @@
                     qr.csvKey = "code";
                     qr.objectID = "code",
                     qr.codeType = document.querySelector("#qrKind").value
-                    console.log("here", qr)
                     canvas.add(qr);
                     resolve(qr);
                 });
@@ -486,64 +510,76 @@
         })
 
         document.querySelector("#qrKey").addEventListener("change", (e) => {
-            codeObject.csvKey = e.target.value || "code";
+            codeObject.csvKey = e.target.value.trim() || "code";
         })
 
 
         /* --- CSV --- */
         async function batchFromCsv() {
+            console.log(parsedCsvData)
             if(!parsedCsvData){
                 return alert("Nebyl nahrán csv soubor!")
             }
-            const pdf = new jsPDF({
-                orientation: 'landscape',
-                unit: 'px',
-                format: [paper.width, paper.height]
-            });
 
-            for (let i = 0; i < parsedCsvData.length; i++) {
-                if (i > 0) {
-                    pdf.addPage();
-                }
+            try{
+                const pdf = new jsPDF({
+                    orientation: 'landscape',
+                    unit: 'px',
+                    format: [paper.width, paper.height]
+                });
 
-                const el = parsedCsvData[i];
+                bs.loader.show()
+                bs.loader.message("Probíhá generování pdf")
+                for (let i = 0; i < parsedCsvData.length; i++) {
+                    if (i > 0) {
+                        pdf.addPage();
+                    }
 
-                if (el[text.csvKey]) {
-                    text.text = el[text.csvKey];
-                }else{
-                    return alert(`Sloupec ${text.csvKey} se nenachází v přiloženém csv!`)
-                }
+                    const el = parsedCsvData[i];
+                    if (el[text.csvKey]) {
+                        text.text = el[text.csvKey];
+                    }else{
+                        text.text = ""
+                    }
 
-                if (el[codeObject.csvKey]) {
-                    const codeText = el[codeObject.csvKey];
+                    
+                    const codeText = el[codeObject.csvKey] || "";
                     const codeType = document.querySelector("#qrKind").value;
                     const img = await generateCode(codeType, codeText);
-                    console.log(img);
+                    
                     await new Promise((resolve) => {
                         codeObject.setSrc(img, function (qr) {
                             resolve();
                         });
                     });
-                }else{
-                    return alert(`Sloupec ${codeObject.csvKey} se nenachází v přiloženém csv!`)
-                }
-
-                await new Promise((resolve) => {
-                    canvas.clone(function (clonedCanvas) {
-                        const group = new fabric.Group([...clonedCanvas.getObjects()]);
-                        console.log(group);
-                        const groupDataUrl = group.toDataURL({
-                            format: 'jpeg',
-                            quality: 0.8,
+                    
+                    await new Promise((resolve) => {
+                        canvas.clone(function (clonedCanvas) {
+                            const group = new fabric.Group([...clonedCanvas.getObjects()]);
+                            //console.log(group);
+                            const groupDataUrl = group.toDataURL({
+                                format: 'jpeg',
+                                quality: 1,
+                            });
+                            //console.log(groupDataUrl);
+                            pdf.addImage(groupDataUrl, 'PNG', 0, 0, paper.width, paper.height);
+                            resolve();
                         });
-                        console.log(groupDataUrl);
-                        pdf.addImage(groupDataUrl, 'PNG', 0, 0, paper.width, paper.height);
-                        resolve();
                     });
-                });
-            }
+                }
+                
+                bs.loader.hide();
+                const now = new Date();
+                const ddmmyy = [now.getHours(), now.getMinutes(), now.getSeconds(), now.getDate(), now.getMonth() + 1, now.getFullYear().toString().substr(-2)].map(n => String(n).padStart(2, '0')).join('');
 
-            pdf.save("qr.pdf");
+                pdf.save(`${ddmmyy.slice(0, 6)}_${ddmmyy.slice(6)}.pdf`);
+                bs.alert("success","Generování pdf proběhlo úspěšně")
+
+            }catch($e){
+                bs.loader.hide()
+                bs.alert("error","Generování pdf selhalo")
+                console.error(error)
+            }
         }
 
         function parseCsv(csv){
@@ -577,6 +613,7 @@
                     reader.onload = (e) => {
                         const content = e.target.result;
                         parsedCsvData = parseCsv(content);
+                        visualizeCsvData()
                     };
                     reader.readAsText(file);
                     bs.alert("success","Načtení csv proběhlo úspěšně")
@@ -682,7 +719,22 @@
                 setTimeout(()=>{
                     bsAlert._element? bsAlert.close() : false
                 },options.dismissTime * 1000 || 5000)
+            },
+            loader: {
+                show:()=>{
+                    document.querySelector("#loader").classList.add("d-flex")
+                    document.querySelector("#loader").classList.remove("d-none")
+                },
+                hide:()=>{
+                    document.querySelector("#loader").classList.add("d-none")
+                    document.querySelector("#loader").classList.remove("d-flex")
+                    document.querySelector("#loader .message").innerHTML = ""
+                },
+                message:(msg)=>{
+                    document.querySelector("#loader .message").innerHTML = msg
+                }
             }
+
         }
 
         function refreshInputs(){
@@ -747,45 +799,52 @@
 
         visualizeCsvData()
         function visualizeCsvData(){
-            let parsedCsvData = JSON.parse('[{"text":"Test123","code":"Test123"},{"text":"Ahoj","code":"Ahoj"},{"text":"BlaBlaBla","code":"Bla Bla Bla"}]')
             const tWrapper = document.querySelector("#csvTableWrapper");
+            
             if(!parsedCsvData){
-                return tWrapper.innerHTML=`
-                    <h6>Žádná data!</h6>
-                `
+                return tWrapper.innerHTML = `<h6>Žádná data!</h6>`;
             }
             
-            const table = document.createElement("table")
-    
+            const table = document.createElement("table");
+            table.classList.add("table","sticky-header");
+            table.dataset.stickyHeader=true
             let uniqueKeys = new Set();
 
+            // Determine unique keys for table headings
             parsedCsvData.forEach(obj => {
-                console.log(obj)
                 Object.keys(obj).forEach(key => {
                     uniqueKeys.add(key);
                 });
             });
 
             let columns = Array.from(uniqueKeys);
-            // table heading
-            let tRow = document.createElement("tr")
-            columns.forEach(e=>{
-                console.log(e);
-                let th = document.createElement("th")
+
+            // Create table heading
+            let thead = document.createElement("thead");
+            let tRow = document.createElement("tr");
+            columns.forEach(e => {
+                let th = document.createElement("th");
                 th.innerHTML = e;
-                tRow.appendChild(th)
-            })
-            table.appendChild(tRow);
+                tRow.appendChild(th);
+            });
+            thead.appendChild(tRow);
+            table.appendChild(thead);
+
+            // Create table body
+            let tbody = document.createElement("tbody");
+            parsedCsvData.forEach(row => {
+                const tRow = document.createElement("tr");
+                columns.forEach(column => {
+                    const td = document.createElement("td");
+                    td.innerHTML = row[column] || '';
+                    tRow.appendChild(td);
+                });
+                tbody.appendChild(tRow);
+            });
+            table.appendChild(tbody);
 
             tWrapper.innerHTML = "";
-            parsedCsvData.forEach(row=>{
-                const trow = document.createElement("row");
-// TODO
-            })
             tWrapper.appendChild(table);
-
-
-            
         }
 </script>
 
