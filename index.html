@@ -25,7 +25,7 @@
     <div class="container">
         <div class="row gx-3">
             <div class="col-sm-3 bg-light border">
-                <div class="p-3 border">
+                <div class="p-3 border" >
                     <div class="row">
                         <div class="col-12 flex-row d-flex">
                             <button id="printBatch" class="btn btn-primary square-button" data-bs-toggle="tooltip" title="Vygenerovat pdf">
@@ -137,6 +137,12 @@
                             </div>
                         </div>
                     </div>
+                    <div class="static-items" data-row-parent>
+
+                    </div>
+                    <div class="col-12">
+                        <button class="btn-primary w-100" data-add-static-item>+</button>
+                    </div>
 
                 </div>
             </div>
@@ -235,8 +241,8 @@
 
         paper = new fabric.Rect({
             fill: "white",
-            width: fabric.util.parseUnit('290mm'),
-            height: fabric.util.parseUnit('210mm'),
+            width: fabric.util.parseUnit('50mm'),
+            height: fabric.util.parseUnit('50mm'),
             hasBorders: false,
             hasControls: false,
             evented: false,
@@ -500,7 +506,6 @@
 
         document.querySelector("#qrKind").addEventListener("change", async(e) => {
             img = await generateCode(e.target.value, "Miele Technika s.r.o");
-            console.log(codeObject)
             codeObject.setSrc(img, function (qr) {
                 canvas.renderAll();
                 codeObject = qr;
@@ -516,6 +521,7 @@
 
         /* --- CSV --- */
         async function batchFromCsv() {
+            // const parsedCsvData = [{"code":"STC Schwab Technologie-Center GMBH"},{"code":"asd"},{"code":"Dopravní značení Svoboda, Olomouc s.r.o."},{"code":"Rybářství a chov drůbeže Horák Zdeněk, s.r.o."}]
             console.log(parsedCsvData)
             if(!parsedCsvData){
                 return alert("Nebyl nahrán csv soubor!")
@@ -528,8 +534,8 @@
                     format: [paper.width, paper.height]
                 });
 
-                bs.loader.show()
-                bs.loader.message("Probíhá generování pdf")
+                ui.loader.show()
+                ui.loader.message("Probíhá generování pdf")
                 for (let i = 0; i < parsedCsvData.length; i++) {
                     if (i > 0) {
                         pdf.addPage();
@@ -546,9 +552,35 @@
                     const codeText = el[codeObject.csvKey] || "";
                     const codeType = document.querySelector("#qrKind").value;
                     const img = await generateCode(codeType, codeText);
-                    
+                    const originalLeft = codeObject.left;
+                    const originalTop = codeObject.top;
+                    const originalWidth = codeObject.width * codeObject.scaleX;
+                    const originalHeight = codeObject.height * codeObject.scaleY;
+
                     await new Promise((resolve) => {
-                        codeObject.setSrc(img, function (qr) {
+                        codeObject.setSrc(img, function () {
+                            // Get the natural dimensions of the new image
+                            const naturalWidth = codeObject._element.naturalWidth;
+                            const naturalHeight = codeObject._element.naturalHeight;
+
+                            // Calculate the scale factors
+                            const scaleX = originalWidth / naturalWidth;
+                            const scaleY = originalHeight / naturalHeight;
+
+                            // Determine which scale to use to maintain aspect ratio
+                            const scale = Math.min(scaleX, scaleY);
+
+                            // Apply the scale
+                            codeObject.scaleX = scale;
+                            codeObject.scaleY = scale;
+
+                            // Reset the position to its original
+                            codeObject.set({
+                                left: originalLeft,
+                                top: originalTop
+                            });
+
+                            // Update the canvas
                             resolve();
                         });
                     });
@@ -568,16 +600,16 @@
                     });
                 }
                 
-                bs.loader.hide();
+                ui.loader.hide();
                 const now = new Date();
                 const ddmmyy = [now.getHours(), now.getMinutes(), now.getSeconds(), now.getDate(), now.getMonth() + 1, now.getFullYear().toString().substr(-2)].map(n => String(n).padStart(2, '0')).join('');
 
                 pdf.save(`${ddmmyy.slice(0, 6)}_${ddmmyy.slice(6)}.pdf`);
-                bs.alert("success","Generování pdf proběhlo úspěšně")
+                ui.alert("success","Generování pdf proběhlo úspěšně")
 
             }catch($e){
-                bs.loader.hide()
-                bs.alert("error","Generování pdf selhalo")
+                ui.loader.hide()
+                ui.alert("error","Generování pdf selhalo")
                 console.error(error)
             }
         }
@@ -616,17 +648,17 @@
                         visualizeCsvData()
                     };
                     reader.readAsText(file);
-                    bs.alert("success","Načtení csv proběhlo úspěšně")
+                    ui.alert("success","Načtení csv proběhlo úspěšně")
                 }
             }catch($e){
-                bs.alert("error","Při načítání csv došlo k chybě");
+                ui.alert("error","Při načítání csv došlo k chybě");
             }
             
         })
 
         /* --- SETTINGS --- */
         function exportSettings(){
-            const data = JSON.stringify(canvas.toJSON(['hasBorders', 'hasControls', 'evented', 'selectable', 'objectID', 'originX', 'originY','codeType','csvKey']));
+            const data = JSON.stringify(canvas.toJSON(['hasBorders', 'hasControls', 'evented', 'selectable', 'objectID', 'originX', 'originY','codeType','csvKey', 'objectType', 'staticType']));
 
             var blob = new Blob([data], { type: 'application/json' });
             var downloadUrl = URL.createObjectURL(blob);
@@ -641,15 +673,20 @@
 
         function importCanvasSettings(settings){
             if (!settings || !settings.objects || !Array.isArray(settings.objects)) {
-                return bs.alert("error","Při nahrávání nastavení došlo k chybě")
+                return ui.alert("error","Při nahrávání nastavení došlo k chybě")
             }
 
             canvas.loadFromJSON(settings,()=>{
                 paper = canvas.getObjects().find(o=>o.objectID === 'paper')
                 codeObject = canvas.getObjects().find(o=>o.objectID === 'code')
-                console.log(codeObject)
                 text = canvas.getObjects().find(o=>o.objectID === 'text')
                 refreshInputs()
+
+                // static objects
+                const staticObjects = canvas.getObjects().filter(o=>o.objectType === 'static')
+                staticObjects.forEach(ob=>{
+                    new MenuItem(ob);
+                })
             })
             
         }
@@ -673,7 +710,7 @@
                     try {
                         var settings = JSON.parse(fileContent);
                     } catch (error) {
-                        return bs.alert("error","Import nastavení selhal")    
+                        return ui.alert("error","Import nastavení selhal")    
                     }
 
                     importCanvasSettings(settings);
@@ -685,7 +722,7 @@
         })
     })();
 
-    const bs = {
+    const ui = {
             alert: (type,content,options = {})=>{
                 let t
                 switch (type) {
@@ -797,7 +834,19 @@
             canvas.renderAll();
         }
 
+        function panToCenter(element) {
+            // Calculate the center of the element
+            var center = element.getCenterPoint();
+
+            // Calculate the offset needed to center the element
+            var offsetX = canvas.getWidth() / 2 - center.x;
+            var offsetY = canvas.getHeight() / 2 - center.y;
+
+            // Update the view to center on the element
+            canvas.relativePan(new fabric.Point(offsetX, offsetY));
+        }
         visualizeCsvData()
+        panToCenter(paper)
         function visualizeCsvData(){
             const tWrapper = document.querySelector("#csvTableWrapper");
             
@@ -846,6 +895,317 @@
             tWrapper.innerHTML = "";
             tWrapper.appendChild(table);
         }
+    
+    
+
+    class CanvasElem{
+        
+        constructor(id){
+            this.id = id || this._genId();
+            this.canvas = canvas;      
+        }
+
+        setCsvKey(key){
+            this.csvKey = key
+            return this
+        }
+
+        getCsvKey(){
+            return this.csvKey;
+        }
+
+        getId(){
+            return this.id;
+        }
+
+        setId(id){
+            this.id = id;
+            return this
+        }
+
+        dispose(){
+            if(this.fabricItem){
+                canvas.remove(this.fabricItem);
+            }
+        }
+
+        _genId(){
+            return Date.now().toString(36) + Math.random().toString(36).substr(2, 9)
+        }
+
+    }
+
+    class MenuItem{
+
+        constructor(obj = null){
+            this.types = [
+                {name:"Text",val:"static-text",class:CanvasText,handler:this._handleTextOption},
+                {name:"Obrázek",val:"static-img",class:CanvasImage,handler:this._handleImageOption}
+            ]
+            this._init()
+            this._populateType()
+
+            if(obj){
+                const foundType = this.types.find((type)=>{return type.val == obj.staticType})
+                this.canvasElem = new foundType.class(obj.src,obj.objectID)
+                console.log(canvasElem)
+            }
+        }
+        
+        _init(){
+            this.parentElem = document.createElement("div")
+            this.parentElem.classList.add("row","py-4")
+
+            // heading
+            const headingParent = document.createElement("div")
+            headingParent.classList.add("col-12")
+            this.heading = document.createElement("span")
+            this.heading.classList.add("h4","d-block")
+            headingParent.appendChild(this.heading)
+
+            this.parentElem.appendChild(headingParent)
+            this.setHeading("Vlastní element")
+
+            // custom elem type
+
+            const typeRow = document.createElement("div")
+            typeRow.classList.add("col-12")
+            typeRow.innerHTML= `
+                <div class="form-group">
+                    <label for="elemType">Typ</label>    
+                </div>
+            `
+            this.typeSelect = document.createElement("select")
+            this.typeSelect.classList.add("form-control")
+
+            typeRow.querySelector(".form-group").appendChild(this.typeSelect)
+
+            
+            document.querySelector("[data-row-parent]").appendChild(this.parentElem)
+            this.parentElem.appendChild(typeRow)
+        }
+
+        setHeading(val){
+            this.heading.innerHTML = val
+        }
+
+        _populateType(){
+            this.typeSelect.innerHTML=`
+                <option value="" disabled selected>Vyberte</option>
+            `
+            this.types.forEach(type=>{
+                console.log(type)
+                const opt = document.createElement("option")
+                opt.value = type.val
+                opt.innerHTML = type.name
+                this.typeSelect.appendChild(opt)
+            })
+            this.typeSelect.addEventListener("change",(e)=>{
+                this._typeListener(e)
+            })
+        }
+
+        _typeListener(e){
+            const val = e.target.value;
+            const foundType = this.types.find(t=>t.val == val)
+            // remove old handler from ui if exists
+            this.handlerElem?.remove()
+            foundType?.handler()
+        }
+
+        _handleTextOption = () => {
+            const div = document.createElement("div")
+            div.dataset.handlerElem=""
+            div.classList.add("col-12")
+            this.handlerElem = div;
+            div.innerHTML = `
+            <div class="form-group">
+                <label>Statický text</label>
+                <input type="text" class="form-control" data-text-value value="text">
+            </div>
+            
+            `
+            const valInput = div.querySelector("[data-text-value]")
+            const generateBtn = document.createElement("button")
+            generateBtn.innerText = "Vygenerovat"
+            generateBtn.addEventListener("click",()=>{
+                
+                if(this.canvasElem && (this.canvasElem.fabricItem.objectType !== this.typeSelect.value)){
+                    console.log("New type, disposing old")
+                    this.canvasElem.dispose()
+                    this.canvasElem = null;
+                }
+                if(!this.canvasElem){
+                    this.canvasElem = new CanvasText()
+                    this.canvasElem.setValue(valInput.value)
+                }else{
+                    this.canvasElem.setValue(valInput.value)
+                }
+                
+            })
+
+            const removeButton = document.createElement("button")
+            removeButton.innerText = "Odstranit" 
+            removeButton.addEventListener("click",()=>{
+                if(this.canvasElem){
+                    this.canvasElem.dispose()
+                }
+                this.parentElem.remove();
+                
+            })
+            div.appendChild(generateBtn)
+            div.appendChild(removeButton)
+            this.parentElem.appendChild(div)
+        }
+
+        _handleImageOption = () => {
+            const div = document.createElement("div")
+            div.dataset.handlerElem=""
+            div.classList.add("col-12")
+            this.handlerElem = div;
+            div.innerHTML = `
+            <div class="form-group">
+                <label>Statický obrázek</label>
+                <input type="file" accept="image/png, image/jpeg" class="form-control" data-image>
+            </div>
+            
+            `
+            div.querySelector("[data-image]").addEventListener('change', (e) => {
+                var file = e.target.files[0];
+                var reader = new FileReader();
+
+                reader.onloadend = () => {
+                    this.img = reader.result
+                }
+
+                reader.readAsDataURL(file);
+            });
+
+            const generateBtn = document.createElement("button")
+            
+            generateBtn.innerText = "Vygenerovat"
+
+            generateBtn.addEventListener("click",()=>{
+                if(!this.img){
+                    return
+                }
+
+                if(this.canvasElem && (this.canvasElem.fabricItem.objectType !== this.typeSelect.value)){
+                    console.log("New type, disposing old")
+                    this.canvasElem.dispose()
+                    this.canvasElem = null;
+                }
+                
+                if(!this.canvasElem){
+                    this.canvasElem = new CanvasImage(this.img)
+                }else{
+                    this.canvasElem.setValue(this.img)
+                }
+                
+            })
+
+            const removeButton = document.createElement("button")
+            removeButton.innerText = "Odstranit"
+            removeButton.addEventListener("click",()=>{
+                console.log("dispose!", this.canvasElem)
+                if(this.canvasElem){
+                    this.canvasElem.dispose()
+                }
+                this.parentElem.remove();
+                
+            })
+            div.appendChild(generateBtn)
+            div.appendChild(removeButton)
+            
+            this.parentElem.appendChild(div)
+        }
+
+
+    }
+    
+    class CanvasText extends CanvasElem{
+        constructor(id){
+            super(id);
+            this.createFabricItem()
+        }
+
+        setValue = (value)=>{
+            this.fabricItem.set("text",value)
+            this.value = value;
+            canvas.renderAll()
+        }
+
+        setFont = (font) => {
+            this.fabricItem.set("font",font)
+            this.font = font
+            canvas.renderAll()
+        }
+
+        createFabricItem(){
+            const id = this.id;
+            this.fabricItem = new fabric.Text(this.value || "", {
+                fontFamily: this.font || "Arial",
+                objectID:id,
+                originX: 'center',
+                originY: 'center',
+                left: paper.width / 2,
+                top: paper.height / 2,
+                objectType: "static",
+                staticType: "static-text"
+            })
+            canvas.add(this.fabricItem);
+
+            canvas.renderAll()
+        }
+
+    }
+
+    class CanvasImage extends CanvasElem{
+        constructor(value=null,id){
+            super(id);
+            this.value = value
+            this.createFabricItem()
+        }
+
+        setValue = (value)=>{
+            this.value = value;
+            this.fabricItem.setSrc(this.value, () => {
+                canvas.renderAll();
+            });
+        }
+
+        getValue = ()=>{
+            return this.value
+        }
+
+        createFabricItem(){
+            const id = this.id;
+            const foundItem = canvas.getObjects().find((obj)=>obj.objectID === id)
+            if(foundItem){
+                return this.fabricItem = foundItem
+            }
+
+            new fabric.Image.fromURL(this.getValue(), (img) => {
+                img.set({
+                    originX: 'center',
+                    originY: 'center',
+                    left: paper.width / 2,
+                    top: paper.height / 2
+                });
+                img.objectID = id;
+                img.objectType = "static";
+                img.staticType = "static-img";
+                this.fabricItem = img;
+                canvas.add(img);
+                canvas.renderAll()
+            });
+        }
+
+    }
+
+    document.querySelector("[data-add-static-item]").addEventListener("click",()=>{
+        new MenuItem()
+    })
 </script>
 
 </html>
